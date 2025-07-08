@@ -9,9 +9,9 @@ This SDK provides a set of tools and methods to interact with the [Meteora Lock 
 ## Installation
 
 ```bash
-npm install @meteora-ag/lock-sdk
+npm install @meteora-ag/met-lock-sdk
 # or
-pnpm install @meteora-ag/lock-sdk
+pnpm install @meteora-ag/met-lock-sdk
 # or
-yarn add @meteora-ag/lock-sdk
+yarn add @meteora-ag/met-lock-sdk
 ```
