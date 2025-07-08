@@ -1,5 +1,5 @@
 {
-  "name": "@meteora-ag/lock-sdk",
+  "name": "@meteora-ag/met-lock-sdk",
   "version": "1.0.0",
   "main": "dist/index.cjs",
   "module": "dist/index.js",
@@ -9,8 +9,7 @@
   "keywords": [
     "meteora-ag",
     "lock",
-    "met-lock",
-    "jup-lock"
+    "met-lock"
   ],
   "files": [
     "dist"
