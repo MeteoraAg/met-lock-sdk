@@ -1,6 +1,7 @@
 import { IdlAccounts, Program, ProgramAccount } from "@coral-xyz/anchor";
 import { Locker } from "./idl/idl";
 import { PublicKey } from "@solana/web3.js";
+import BN from "bn.js";
 
 export type LockProgram = Program<Locker>;
 
@@ -30,6 +31,23 @@ export enum CancelMode {
   CREATOR_RECIPIENT = 3,
 }
 
+export enum RemainingAccountsType {
+  TransferHookEscrow = "transferHookEscrow",
+}
+
+export type RemainingAccountsAnchorType = { transferHookEscrow: {} };
+
+export type RemainingAccountsSliceData = {
+  accountsType: RemainingAccountsAnchorType;
+  length: number;
+};
+
+export type RemainingAccountsInfoData = {
+  slices: RemainingAccountsSliceData[];
+};
+
+export type OptionRemainingAccountsInfoData = RemainingAccountsInfoData | null;
+
 export type CreateVestingEscrowMetadataParams = {
   base: PublicKey;
   name: string;
@@ -40,6 +58,33 @@ export type CreateVestingEscrowMetadataParams = {
   tokenProgram: PublicKey;
   creator: PublicKey;
   payer: PublicKey;
+};
+
+export type CreateRootEscrowParams = {
+  base: PublicKey;
+  tokenMint: PublicKey;
+  creator: PublicKey;
+  payer: PublicKey;
+  maxClaimAmount: BN;
+  maxEscrow: BN;
+  version: BN;
+};
+
+export type CreateVestingEscrowParams = {
+  base: PublicKey;
+  sender: PublicKey;
+  payer: PublicKey;
+  tokenMint: PublicKey;
+  vestingStartTime: BN;
+  cliffTime: BN;
+  frequency: BN;
+  cliffUnlockAmount: BN;
+  amountPerPeriod: BN;
+  numberOfPeriod: BN;
+  recipient: PublicKey;
+  updateRecipientMode: number;
+  cancelMode: number;
+  tokenProgram: PublicKey;
 };
 
 export type CancelVestingPlanParams = {
