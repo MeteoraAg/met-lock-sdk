@@ -7,28 +7,28 @@ import {
 } from "@solana/web3.js";
 import {
   ClaimParams,
-  CreateRootEscrowParams,
-  CreateVestingEscrowFromRootParams,
   CreateVestingEscrowMetadataParams,
   CreateVestingEscrowParams,
   Escrow,
   LockProgram,
   RemainingAccountsType,
   RootEscrow,
-  TokenType,
 } from "./types";
 import {
   createLockProgram,
-  deriveBase,
   deriveEscrow,
-  deriveRootEscrow,
   getOrCreateATAInstruction,
   getTokenProgram,
   RemainingAccountsBuilder,
   TokenExtensionUtil,
   getAccountData,
+  deriveEscrowMetadata,
 } from "./helpers";
-import { TOKEN_2022_PROGRAM_ID } from "@solana/spl-token";
+import {
+  ASSOCIATED_TOKEN_PROGRAM_ID,
+  getAssociatedTokenAddressSync,
+  TOKEN_2022_PROGRAM_ID,
+} from "@solana/spl-token";
 import { MEMO_PROGRAM_ID } from "./constants";
 
 export class LockClient {
@@ -69,48 +69,16 @@ export class LockClient {
     createVestingEscrowMetadataParams: CreateVestingEscrowMetadataParams
   ): Promise<Transaction> {
     const {
-      base,
+      escrow,
       name,
       description,
       creatorEmail,
       recipientEmail,
-      tokenMint,
-      tokenProgram,
       creator,
       payer,
     } = createVestingEscrowMetadataParams;
 
-    const escrow = deriveEscrow(base);
-
-    const preInstructions = [];
-
-    const { ataPubkey: creatorATA, ix: createCreatorATAInstruction } =
-      await getOrCreateATAInstruction(
-        this.program.provider.connection,
-        tokenMint,
-        creator,
-        payer,
-        true,
-        tokenProgram
-      );
-
-    if (createCreatorATAInstruction) {
-      preInstructions.push(createCreatorATAInstruction);
-    }
-
-    const { ataPubkey: escrowATA, ix: escrowATAInstruction } =
-      await getOrCreateATAInstruction(
-        this.program.provider.connection,
-        tokenMint,
-        escrow,
-        payer,
-        true,
-        tokenProgram
-      );
-
-    if (escrowATAInstruction) {
-      preInstructions.push(escrowATAInstruction);
-    }
+    const escrowMetadata = deriveEscrowMetadata(escrow);
 
     return this.program.methods
       .createVestingEscrowMetadata({
@@ -123,130 +91,8 @@ export class LockClient {
         escrow,
         creator,
         payer,
+        escrowMetadata,
       })
-      .preInstructions(preInstructions)
-      .transaction();
-  }
-
-  /**
-   * Create root escrow
-   * @param createRootEscrowParams
-   * @returns Transaction
-   */
-  async createRootEscrow(
-    createRootEscrowParams: CreateRootEscrowParams
-  ): Promise<Transaction> {
-    const {
-      base,
-      tokenMint,
-      creator,
-      payer,
-      maxClaimAmount,
-      maxEscrow,
-      version,
-    } = createRootEscrowParams;
-
-    const rootEscrow = deriveRootEscrow(base, tokenMint, version.toNumber());
-
-    const params = {
-      maxClaimAmount,
-      maxEscrow,
-      version,
-      root: new Array(32).fill(0) as number[],
-    };
-
-    return this.program.methods
-      .createRootEscrow(params)
-      .accountsPartial({
-        base,
-        rootEscrow,
-        tokenMint,
-        payer,
-        creator,
-      })
-      .transaction();
-  }
-
-  /**
-   * Create vesting escrow
-   * @param createVestingEscrowParams
-   * @returns Transaction
-   */
-  async createVestingEscrow(
-    createVestingEscrowParams: CreateVestingEscrowParams
-  ): Promise<Transaction> {
-    const {
-      base,
-      sender,
-      payer,
-      tokenMint,
-      vestingStartTime,
-      cliffTime,
-      frequency,
-      cliffUnlockAmount,
-      amountPerPeriod,
-      numberOfPeriod,
-      recipient,
-      updateRecipientMode,
-      cancelMode,
-      tokenProgram,
-    } = createVestingEscrowParams;
-
-    const escrow = deriveEscrow(base);
-
-    const preInstructions = [];
-
-    const { ataPubkey: senderATA, ix: createSenderATAInstruction } =
-      await getOrCreateATAInstruction(
-        this.program.provider.connection,
-        tokenMint,
-        sender,
-        payer,
-        true,
-        tokenProgram
-      );
-
-    if (createSenderATAInstruction) {
-      preInstructions.push(createSenderATAInstruction);
-    }
-
-    const { ataPubkey: escrowATA, ix: escrowATAInstruction } =
-      await getOrCreateATAInstruction(
-        this.program.provider.connection,
-        tokenMint,
-        escrow,
-        payer,
-        true,
-        tokenProgram
-      );
-
-    if (escrowATAInstruction) {
-      preInstructions.push(escrowATAInstruction);
-    }
-
-    const params = {
-      cliffTime,
-      frequency,
-      cliffUnlockAmount,
-      amountPerPeriod,
-      numberOfPeriod,
-      updateRecipientMode,
-      vestingStartTime,
-      cancelMode,
-    };
-
-    return this.program.methods
-      .createVestingEscrow(params)
-      .accountsPartial({
-        base,
-        escrow,
-        escrowToken: escrowATA,
-        sender,
-        senderToken: senderATA,
-        recipient,
-        tokenProgram,
-      })
-      .preInstructions(preInstructions)
       .transaction();
   }
 
@@ -279,19 +125,13 @@ export class LockClient {
 
     const preInstructions = [];
 
-    const { ataPubkey: senderATA, ix: createSenderATAInstruction } =
-      await getOrCreateATAInstruction(
-        this.program.provider.connection,
-        tokenMint,
-        sender,
-        payer,
-        true,
-        tokenProgram
-      );
-
-    if (createSenderATAInstruction) {
-      preInstructions.push(createSenderATAInstruction);
-    }
+    const senderATA = getAssociatedTokenAddressSync(
+      tokenMint,
+      sender,
+      false,
+      tokenProgram,
+      ASSOCIATED_TOKEN_PROGRAM_ID
+    );
 
     const { ataPubkey: escrowATA, ix: escrowATAInstruction } =
       await getOrCreateATAInstruction(
@@ -340,187 +180,17 @@ export class LockClient {
       cancelMode,
     };
 
-    return this.program.methods
+    return await this.program.methods
       .createVestingEscrowV2(params, remainingAccountsInfo)
       .accountsPartial({
         base,
-        escrow,
-        tokenMint,
-        escrowToken: escrowATA,
-        sender,
         senderToken: senderATA,
         recipient,
+        tokenMint,
+        sender,
         tokenProgram,
       })
-      .preInstructions(preInstructions)
-      .transaction();
-  }
-
-  /**
-   * Create vesting escrow from root
-   * @param createVestingEscrowFromRootParams
-   * @returns Transaction
-   */
-  async createVestingEscrowFromRoot(
-    createVestingEscrowFromRootParams: CreateVestingEscrowFromRootParams
-  ): Promise<Transaction> {
-    const {
-      rootEscrow,
-      vestingStartTime,
-      cliffTime,
-      frequency,
-      cliffUnlockAmount,
-      amountPerPeriod,
-      numberOfPeriod,
-      updateRecipientMode,
-      cancelMode,
-      recipient,
-      proof,
-      payer,
-    } = createVestingEscrowFromRootParams;
-
-    const rootEscrowState = await this.getRootEscrow(rootEscrow);
-
-    const base = deriveBase(rootEscrow, recipient);
-
-    const escrow = deriveEscrow(base);
-
-    const tokenProgram = getTokenProgram(rootEscrowState.tokenProgramFlag);
-
-    const preInstructions = [];
-
-    const { ataPubkey: escrowATA, ix: escrowATAInstruction } =
-      await getOrCreateATAInstruction(
-        this.program.provider.connection,
-        rootEscrowState.tokenMint,
-        escrow,
-        payer,
-        true,
-        tokenProgram
-      );
-
-    if (escrowATAInstruction) {
-      preInstructions.push(escrowATAInstruction);
-    }
-
-    const { ataPubkey: rootEscrowATA, ix: createRootEscrowATAInstruction } =
-      await getOrCreateATAInstruction(
-        this.program.provider.connection,
-        rootEscrowState.tokenMint,
-        rootEscrow,
-        payer,
-        true,
-        tokenProgram
-      );
-
-    if (createRootEscrowATAInstruction) {
-      preInstructions.push(createRootEscrowATAInstruction);
-    }
-
-    let remainingAccountsInfo = null;
-    let remainingAccounts: AccountMeta[] = [];
-    if (rootEscrowState.tokenProgramFlag == TokenType.Token2022) {
-      let inputTransferHookAccounts =
-        await TokenExtensionUtil.getExtraAccountMetasForTransferHook(
-          this.program.provider.connection,
-          rootEscrowState.tokenMint,
-          rootEscrowATA,
-          escrowATA,
-          payer,
-          TOKEN_2022_PROGRAM_ID
-        );
-
-      [remainingAccountsInfo, remainingAccounts] =
-        new RemainingAccountsBuilder()
-          .addSlice(
-            RemainingAccountsType.TransferHookEscrow,
-            inputTransferHookAccounts
-          )
-          .build();
-    }
-
-    const params = {
-      vestingStartTime,
-      cliffTime,
-      frequency,
-      amountPerPeriod,
-      numberOfPeriod,
-      cliffUnlockAmount,
-      updateRecipientMode,
-      cancelMode,
-    };
-
-    return this.program.methods
-      .createVestingEscrowFromRoot(params, proof, remainingAccountsInfo)
-      .accountsPartial({
-        rootEscrow,
-        escrow,
-        escrowToken: escrowATA,
-        rootEscrowToken: rootEscrowATA,
-        payer,
-      })
-      .preInstructions(preInstructions)
-      .transaction();
-  }
-
-  // TODO: Implement fundRootEscrow
-  async fundRootEscrow() {}
-
-  // TODO: Implement updateVestingEscrowReceipient
-  async updateVestingEscrowReceipient() {}
-
-  /**
-   * Claim maximum amount from the vesting escrow
-   * This instruction supports both splToken and token2022
-   * @param claimParams
-   * @returns Transaction
-   */
-  async claim(claimParams: ClaimParams): Promise<Transaction> {
-    const { escrow, recipient, maxAmount, payer } = claimParams;
-
-    const escrowState = await this.getEscrow(escrow);
-
-    const tokenProgram = getTokenProgram(escrowState.tokenProgramFlag);
-
-    const preInstructions = [];
-
-    const { ataPubkey: escrowATA, ix: escrowATAInstruction } =
-      await getOrCreateATAInstruction(
-        this.program.provider.connection,
-        escrowState.tokenMint,
-        escrow,
-        payer,
-        true,
-        tokenProgram
-      );
-
-    if (escrowATAInstruction) {
-      preInstructions.push(escrowATAInstruction);
-    }
-
-    const { ataPubkey: recipientATA, ix: recipientATAInstruction } =
-      await getOrCreateATAInstruction(
-        this.program.provider.connection,
-        escrowState.tokenMint,
-        recipient,
-        payer,
-        true,
-        tokenProgram
-      );
-
-    if (recipientATAInstruction) {
-      preInstructions.push(recipientATAInstruction);
-    }
-
-    return this.program.methods
-      .claim(maxAmount)
-      .accountsPartial({
-        escrow,
-        escrowToken: escrowATA,
-        recipient,
-        recipientToken: recipientATA,
-        tokenProgram,
-      })
+      .remainingAccounts(remainingAccounts ? remainingAccounts : [])
       .preInstructions(preInstructions)
       .transaction();
   }
@@ -540,19 +210,13 @@ export class LockClient {
 
     const preInstructions = [];
 
-    const { ataPubkey: escrowATA, ix: escrowATAInstruction } =
-      await getOrCreateATAInstruction(
-        this.program.provider.connection,
-        escrowState.tokenMint,
-        escrow,
-        payer,
-        true,
-        tokenProgram
-      );
-
-    if (escrowATAInstruction) {
-      preInstructions.push(escrowATAInstruction);
-    }
+    const escrowATA = getAssociatedTokenAddressSync(
+      escrowState.tokenMint,
+      escrow,
+      true,
+      tokenProgram,
+      ASSOCIATED_TOKEN_PROGRAM_ID
+    );
 
     const { ataPubkey: recipientATA, ix: recipientATAInstruction } =
       await getOrCreateATAInstruction(
@@ -560,7 +224,7 @@ export class LockClient {
         escrowState.tokenMint,
         recipient,
         payer,
-        true,
+        false,
         tokenProgram
       );
 
@@ -593,21 +257,16 @@ export class LockClient {
     return this.program.methods
       .claimV2(maxAmount, remainingAccountsInfo)
       .accountsPartial({
+        tokenProgram,
         tokenMint: escrowState.tokenMint,
         escrow,
         escrowToken: escrowATA,
         recipient,
         recipientToken: recipientATA,
         memoProgram: MEMO_PROGRAM_ID,
-        tokenProgram,
       })
+      .remainingAccounts(remainingAccounts ? remainingAccounts : [])
       .preInstructions(preInstructions)
       .transaction();
   }
-
-  // TODO: Implement cancelVestingEscrow
-  async cancelVestingEscrow() {}
-
-  // TODO: Implement closeVestingEscrow
-  async closeVestingEscrow() {}
 }

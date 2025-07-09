@@ -50,25 +50,13 @@ export type RemainingAccountsInfoData = {
 export type OptionRemainingAccountsInfoData = RemainingAccountsInfoData | null;
 
 export type CreateVestingEscrowMetadataParams = {
-  base: PublicKey;
+  escrow: PublicKey;
   name: string;
   description: string;
   creatorEmail: string;
   recipientEmail: string;
-  tokenMint: PublicKey;
-  tokenProgram: PublicKey;
   creator: PublicKey;
   payer: PublicKey;
-};
-
-export type CreateRootEscrowParams = {
-  base: PublicKey;
-  tokenMint: PublicKey;
-  creator: PublicKey;
-  payer: PublicKey;
-  maxClaimAmount: BN;
-  maxEscrow: BN;
-  version: BN;
 };
 
 export type CreateVestingEscrowParams = {
@@ -88,30 +76,9 @@ export type CreateVestingEscrowParams = {
   tokenProgram: PublicKey;
 };
 
-export type CreateVestingEscrowFromRootParams = {
-  rootEscrow: PublicKey;
-  vestingStartTime: BN;
-  cliffTime: BN;
-  frequency: BN;
-  cliffUnlockAmount: BN;
-  amountPerPeriod: BN;
-  numberOfPeriod: BN;
-  updateRecipientMode: number;
-  cancelMode: number;
-  proof: Array<number>[];
-  recipient: PublicKey;
-  payer: PublicKey;
-};
-
 export type ClaimParams = {
   escrow: PublicKey;
   recipient: PublicKey;
-  recipientToken: PublicKey;
   maxAmount: BN;
   payer: PublicKey;
-};
-
-export type CancelVestingPlanParams = {
-  escrow: EscrowWithMetadata;
-  signer: PublicKey;
 };
