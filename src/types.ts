@@ -103,7 +103,7 @@ export type CreateVestingEscrowFromRootParams = {
   payer: PublicKey;
 };
 
-export type ClaimV2Params = {
+export type ClaimParams = {
   escrow: PublicKey;
   recipient: PublicKey;
   recipientToken: PublicKey;

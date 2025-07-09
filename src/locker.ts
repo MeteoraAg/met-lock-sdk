@@ -6,7 +6,7 @@ import {
   Transaction,
 } from "@solana/web3.js";
 import {
-  ClaimV2Params,
+  ClaimParams,
   CreateRootEscrowParams,
   CreateVestingEscrowFromRootParams,
   CreateVestingEscrowMetadataParams,
@@ -17,16 +17,18 @@ import {
   RootEscrow,
   TokenType,
 } from "./types";
-import { createLockProgram } from "./helpers";
-import { deriveBase, deriveEscrow, deriveRootEscrow } from "./helpers/accounts";
 import {
+  createLockProgram,
+  deriveBase,
+  deriveEscrow,
+  deriveRootEscrow,
   getOrCreateATAInstruction,
   getTokenProgram,
   RemainingAccountsBuilder,
   TokenExtensionUtil,
-} from "./helpers/token";
+  getAccountData,
+} from "./helpers";
 import { TOKEN_2022_PROGRAM_ID } from "@solana/spl-token";
-import { getAccountData } from "./helpers/common";
 import { MEMO_PROGRAM_ID } from "./constants";
 
 export class LockClient {
@@ -40,14 +42,29 @@ export class LockClient {
     this.commitment = commitment;
   }
 
+  /**
+   * Get root escrow
+   * @param rootEscrow
+   * @returns RootEscrow
+   */
   async getRootEscrow(rootEscrow: PublicKey): Promise<RootEscrow> {
     return getAccountData(rootEscrow, "rootEscrow", this.program);
   }
 
+  /**
+   * Get vesting escrow
+   * @param escrow
+   * @returns Escrow
+   */
   async getEscrow(escrow: PublicKey): Promise<Escrow> {
     return getAccountData(escrow, "vestingEscrow", this.program);
   }
 
+  /**
+   * Create vesting escrow metadata
+   * @param createVestingEscrowMetadataParams
+   * @returns Transaction
+   */
   async createVestingEscrowMetadata(
     createVestingEscrowMetadataParams: CreateVestingEscrowMetadataParams
   ): Promise<Transaction> {
@@ -111,6 +128,11 @@ export class LockClient {
       .transaction();
   }
 
+  /**
+   * Create root escrow
+   * @param createRootEscrowParams
+   * @returns Transaction
+   */
   async createRootEscrow(
     createRootEscrowParams: CreateRootEscrowParams
   ): Promise<Transaction> {
@@ -145,6 +167,11 @@ export class LockClient {
       .transaction();
   }
 
+  /**
+   * Create vesting escrow
+   * @param createVestingEscrowParams
+   * @returns Transaction
+   */
   async createVestingEscrow(
     createVestingEscrowParams: CreateVestingEscrowParams
   ): Promise<Transaction> {
@@ -223,6 +250,11 @@ export class LockClient {
       .transaction();
   }
 
+  /**
+   * Create vesting escrow v2
+   * @param createVestingEscrowV2Params
+   * @returns Transaction
+   */
   async createVestingEscrowV2(
     createVestingEscrowV2Params: CreateVestingEscrowParams
   ): Promise<Transaction> {
@@ -324,6 +356,11 @@ export class LockClient {
       .transaction();
   }
 
+  /**
+   * Create vesting escrow from root
+   * @param createVestingEscrowFromRootParams
+   * @returns Transaction
+   */
   async createVestingEscrowFromRoot(
     createVestingEscrowFromRootParams: CreateVestingEscrowFromRootParams
   ): Promise<Transaction> {
@@ -426,13 +463,75 @@ export class LockClient {
       .transaction();
   }
 
+  // TODO: Implement fundRootEscrow
   async fundRootEscrow() {}
 
+  // TODO: Implement updateVestingEscrowReceipient
   async updateVestingEscrowReceipient() {}
 
-  async claim() {}
+  /**
+   * Claim maximum amount from the vesting escrow
+   * This instruction supports both splToken and token2022
+   * @param claimParams
+   * @returns Transaction
+   */
+  async claim(claimParams: ClaimParams): Promise<Transaction> {
+    const { escrow, recipient, maxAmount, payer } = claimParams;
 
-  async claimV2(claimV2Params: ClaimV2Params): Promise<Transaction> {
+    const escrowState = await this.getEscrow(escrow);
+
+    const tokenProgram = getTokenProgram(escrowState.tokenProgramFlag);
+
+    const preInstructions = [];
+
+    const { ataPubkey: escrowATA, ix: escrowATAInstruction } =
+      await getOrCreateATAInstruction(
+        this.program.provider.connection,
+        escrowState.tokenMint,
+        escrow,
+        payer,
+        true,
+        tokenProgram
+      );
+
+    if (escrowATAInstruction) {
+      preInstructions.push(escrowATAInstruction);
+    }
+
+    const { ataPubkey: recipientATA, ix: recipientATAInstruction } =
+      await getOrCreateATAInstruction(
+        this.program.provider.connection,
+        escrowState.tokenMint,
+        recipient,
+        payer,
+        true,
+        tokenProgram
+      );
+
+    if (recipientATAInstruction) {
+      preInstructions.push(recipientATAInstruction);
+    }
+
+    return this.program.methods
+      .claim(maxAmount)
+      .accountsPartial({
+        escrow,
+        escrowToken: escrowATA,
+        recipient,
+        recipientToken: recipientATA,
+        tokenProgram,
+      })
+      .preInstructions(preInstructions)
+      .transaction();
+  }
+
+  /**
+   * Claim maximum amount from the vesting escrow v2
+   * This instruction supports both splToken and token2022
+   * @param claimV2Params
+   * @returns Transaction
+   */
+  async claimV2(claimV2Params: ClaimParams): Promise<Transaction> {
     const { escrow, recipient, maxAmount, payer } = claimV2Params;
 
     const escrowState = await this.getEscrow(escrow);
@@ -506,7 +605,9 @@ export class LockClient {
       .transaction();
   }
 
+  // TODO: Implement cancelVestingEscrow
   async cancelVestingEscrow() {}
 
+  // TODO: Implement closeVestingEscrow
   async closeVestingEscrow() {}
 }
