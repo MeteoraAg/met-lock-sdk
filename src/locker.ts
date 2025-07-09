@@ -2,23 +2,32 @@ import {
   AccountMeta,
   Commitment,
   Connection,
+  PublicKey,
   Transaction,
 } from "@solana/web3.js";
 import {
+  ClaimV2Params,
   CreateRootEscrowParams,
+  CreateVestingEscrowFromRootParams,
   CreateVestingEscrowMetadataParams,
   CreateVestingEscrowParams,
+  Escrow,
   LockProgram,
   RemainingAccountsType,
+  RootEscrow,
+  TokenType,
 } from "./types";
 import { createLockProgram } from "./helpers";
-import { deriveEscrow, deriveRootEscrow } from "./helpers/accounts";
+import { deriveBase, deriveEscrow, deriveRootEscrow } from "./helpers/accounts";
 import {
   getOrCreateATAInstruction,
+  getTokenProgram,
   RemainingAccountsBuilder,
   TokenExtensionUtil,
 } from "./helpers/token";
 import { TOKEN_2022_PROGRAM_ID } from "@solana/spl-token";
+import { getAccountData } from "./helpers/common";
+import { MEMO_PROGRAM_ID } from "./constants";
 
 export class LockClient {
   program: LockProgram;
@@ -29,6 +38,14 @@ export class LockClient {
     this.program = createLockProgram(connection, commitment);
     this.connection = connection;
     this.commitment = commitment;
+  }
+
+  async getRootEscrow(rootEscrow: PublicKey): Promise<RootEscrow> {
+    return getAccountData(rootEscrow, "rootEscrow", this.program);
+  }
+
+  async getEscrow(escrow: PublicKey): Promise<Escrow> {
+    return getAccountData(escrow, "vestingEscrow", this.program);
   }
 
   async createVestingEscrowMetadata(
@@ -307,7 +324,107 @@ export class LockClient {
       .transaction();
   }
 
-  async createVestingEscrowFromRoot() {}
+  async createVestingEscrowFromRoot(
+    createVestingEscrowFromRootParams: CreateVestingEscrowFromRootParams
+  ): Promise<Transaction> {
+    const {
+      rootEscrow,
+      vestingStartTime,
+      cliffTime,
+      frequency,
+      cliffUnlockAmount,
+      amountPerPeriod,
+      numberOfPeriod,
+      updateRecipientMode,
+      cancelMode,
+      recipient,
+      proof,
+      payer,
+    } = createVestingEscrowFromRootParams;
+
+    const rootEscrowState = await this.getRootEscrow(rootEscrow);
+
+    const base = deriveBase(rootEscrow, recipient);
+
+    const escrow = deriveEscrow(base);
+
+    const tokenProgram = getTokenProgram(rootEscrowState.tokenProgramFlag);
+
+    const preInstructions = [];
+
+    const { ataPubkey: escrowATA, ix: escrowATAInstruction } =
+      await getOrCreateATAInstruction(
+        this.program.provider.connection,
+        rootEscrowState.tokenMint,
+        escrow,
+        payer,
+        true,
+        tokenProgram
+      );
+
+    if (escrowATAInstruction) {
+      preInstructions.push(escrowATAInstruction);
+    }
+
+    const { ataPubkey: rootEscrowATA, ix: createRootEscrowATAInstruction } =
+      await getOrCreateATAInstruction(
+        this.program.provider.connection,
+        rootEscrowState.tokenMint,
+        rootEscrow,
+        payer,
+        true,
+        tokenProgram
+      );
+
+    if (createRootEscrowATAInstruction) {
+      preInstructions.push(createRootEscrowATAInstruction);
+    }
+
+    let remainingAccountsInfo = null;
+    let remainingAccounts: AccountMeta[] = [];
+    if (rootEscrowState.tokenProgramFlag == TokenType.Token2022) {
+      let inputTransferHookAccounts =
+        await TokenExtensionUtil.getExtraAccountMetasForTransferHook(
+          this.program.provider.connection,
+          rootEscrowState.tokenMint,
+          rootEscrowATA,
+          escrowATA,
+          payer,
+          TOKEN_2022_PROGRAM_ID
+        );
+
+      [remainingAccountsInfo, remainingAccounts] =
+        new RemainingAccountsBuilder()
+          .addSlice(
+            RemainingAccountsType.TransferHookEscrow,
+            inputTransferHookAccounts
+          )
+          .build();
+    }
+
+    const params = {
+      vestingStartTime,
+      cliffTime,
+      frequency,
+      amountPerPeriod,
+      numberOfPeriod,
+      cliffUnlockAmount,
+      updateRecipientMode,
+      cancelMode,
+    };
+
+    return this.program.methods
+      .createVestingEscrowFromRoot(params, proof, remainingAccountsInfo)
+      .accountsPartial({
+        rootEscrow,
+        escrow,
+        escrowToken: escrowATA,
+        rootEscrowToken: rootEscrowATA,
+        payer,
+      })
+      .preInstructions(preInstructions)
+      .transaction();
+  }
 
   async fundRootEscrow() {}
 
@@ -315,7 +432,79 @@ export class LockClient {
 
   async claim() {}
 
-  async claimV2() {}
+  async claimV2(claimV2Params: ClaimV2Params): Promise<Transaction> {
+    const { escrow, recipient, maxAmount, payer } = claimV2Params;
+
+    const escrowState = await this.getEscrow(escrow);
+
+    const tokenProgram = getTokenProgram(escrowState.tokenProgramFlag);
+
+    const preInstructions = [];
+
+    const { ataPubkey: escrowATA, ix: escrowATAInstruction } =
+      await getOrCreateATAInstruction(
+        this.program.provider.connection,
+        escrowState.tokenMint,
+        escrow,
+        payer,
+        true,
+        tokenProgram
+      );
+
+    if (escrowATAInstruction) {
+      preInstructions.push(escrowATAInstruction);
+    }
+
+    const { ataPubkey: recipientATA, ix: recipientATAInstruction } =
+      await getOrCreateATAInstruction(
+        this.program.provider.connection,
+        escrowState.tokenMint,
+        recipient,
+        payer,
+        true,
+        tokenProgram
+      );
+
+    if (recipientATAInstruction) {
+      preInstructions.push(recipientATAInstruction);
+    }
+
+    let remainingAccountsInfo = null;
+    let remainingAccounts: AccountMeta[] = [];
+    if (tokenProgram == TOKEN_2022_PROGRAM_ID) {
+      let claimTransferHookAccounts =
+        await TokenExtensionUtil.getExtraAccountMetasForTransferHook(
+          this.program.provider.connection,
+          escrowState.tokenMint,
+          escrowATA,
+          recipientATA,
+          escrow,
+          TOKEN_2022_PROGRAM_ID
+        );
+
+      [remainingAccountsInfo, remainingAccounts] =
+        new RemainingAccountsBuilder()
+          .addSlice(
+            RemainingAccountsType.TransferHookEscrow,
+            claimTransferHookAccounts
+          )
+          .build();
+    }
+
+    return this.program.methods
+      .claimV2(maxAmount, remainingAccountsInfo)
+      .accountsPartial({
+        tokenMint: escrowState.tokenMint,
+        escrow,
+        escrowToken: escrowATA,
+        recipient,
+        recipientToken: recipientATA,
+        memoProgram: MEMO_PROGRAM_ID,
+        tokenProgram,
+      })
+      .preInstructions(preInstructions)
+      .transaction();
+  }
 
   async cancelVestingEscrow() {}
 

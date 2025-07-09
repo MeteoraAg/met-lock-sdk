@@ -5,6 +5,7 @@ import BN from "bn.js";
 
 export type LockProgram = Program<Locker>;
 
+export type RootEscrow = IdlAccounts<Locker>["rootEscrow"];
 export type Escrow = IdlAccounts<Locker>["vestingEscrow"];
 export type EscrowMetadata = IdlAccounts<Locker>["vestingEscrowMetadata"];
 export type EscrowWithMetadata = ProgramAccount<Escrow> & {
@@ -85,6 +86,29 @@ export type CreateVestingEscrowParams = {
   updateRecipientMode: number;
   cancelMode: number;
   tokenProgram: PublicKey;
+};
+
+export type CreateVestingEscrowFromRootParams = {
+  rootEscrow: PublicKey;
+  vestingStartTime: BN;
+  cliffTime: BN;
+  frequency: BN;
+  cliffUnlockAmount: BN;
+  amountPerPeriod: BN;
+  numberOfPeriod: BN;
+  updateRecipientMode: number;
+  cancelMode: number;
+  proof: Array<number>[];
+  recipient: PublicKey;
+  payer: PublicKey;
+};
+
+export type ClaimV2Params = {
+  escrow: PublicKey;
+  recipient: PublicKey;
+  recipientToken: PublicKey;
+  maxAmount: BN;
+  payer: PublicKey;
 };
 
 export type CancelVestingPlanParams = {

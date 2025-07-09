@@ -1,5 +1,6 @@
 import { PublicKey } from "@solana/web3.js";
 import {
+  BASE_SEED,
   ESCROW_METADATA_SEED,
   ESCROW_SEED,
   LOCK_PROGRAM_ID,
@@ -33,6 +34,16 @@ export function deriveRootEscrow(
       mint.toBuffer(),
       encodeU64(version),
     ],
+    LOCK_PROGRAM_ID
+  )[0];
+}
+
+export function deriveBase(
+  rootEscrow: PublicKey,
+  recipient: PublicKey
+): PublicKey {
+  return PublicKey.findProgramAddressSync(
+    [Buffer.from(BASE_SEED), rootEscrow.toBuffer(), recipient.toBuffer()],
     LOCK_PROGRAM_ID
   )[0];
 }
