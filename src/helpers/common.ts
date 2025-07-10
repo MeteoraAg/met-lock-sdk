@@ -19,7 +19,15 @@ export async function getAccountData<T>(
       ? accountAddress
       : new PublicKey(accountAddress);
 
-  return (await program.account[accountType].fetchNullable(address)) as T;
+  const accountData = await program.account[accountType].fetchNullable(address);
+
+  if (accountData === null) {
+    throw new Error(
+      `Account of type '${accountType}' not found at address: ${address.toBase58()}`
+    );
+  }
+
+  return accountData as T;
 }
 
 /**
