@@ -107,6 +107,7 @@ export class LockClient {
     const {
       base,
       sender,
+      isSenderMultiSig,
       payer,
       tokenMint,
       vestingStartTime,
@@ -128,7 +129,7 @@ export class LockClient {
     const senderATA = getAssociatedTokenAddressSync(
       tokenMint,
       sender,
-      false,
+      isSenderMultiSig,
       tokenProgram,
       ASSOCIATED_TOKEN_PROGRAM_ID
     );
