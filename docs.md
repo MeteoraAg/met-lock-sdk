@@ -38,6 +38,7 @@ async createVestingEscrowV2(createVestingEscrowV2Params: CreateVestingEscrowPara
 interface CreateVestingEscrowParams {
   base: PublicKey; // The base address
   sender: PublicKey; // The sender address
+  isSenderMultiSig: boolean; // Whether the sender is a multi-sig account
   payer: PublicKey; // The payer address
   tokenMint: PublicKey; // The token mint address
   vestingStartTime: BN; // The vesting start time
@@ -67,6 +68,7 @@ const cliffTime = new BN(currentBlockTime).add(new BN(5));
 const transaction = await client.createVestingEscrowV2({
   base: new PublicKey("base1234567890abcdefghijklmnopqrstuvwxyz"),
   sender: new PublicKey("sender1234567890abcdefghijklmnopqrstuvwxyz"),
+  isSenderMultiSig: false,
   payer: new PublicKey("payer1234567890abcdefghijklmnopqrstuvwxyz"),
   tokenMint: new PublicKey("tokenMint1234567890abcdefghijklmnopqrstuvwxyz"),
   vestingStartTime: new BN(0),
