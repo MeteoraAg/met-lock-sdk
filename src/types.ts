@@ -62,6 +62,7 @@ export type CreateVestingEscrowMetadataParams = {
 export type CreateVestingEscrowParams = {
   base: PublicKey;
   sender: PublicKey;
+  isSenderMultiSig: boolean;
   payer: PublicKey;
   tokenMint: PublicKey;
   vestingStartTime: BN;
