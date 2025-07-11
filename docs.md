@@ -6,6 +6,7 @@
 
   - [createVestingEscrowV2](#createVestingEscrowV2)
   - [claimV2](#claimV2)
+  - [createVestingEscrowMetadata](#createVestingEscrowMetadata)
 
 - [State Functions](#state-functions)
 
@@ -129,6 +130,54 @@ const transaction = await client.claimV2({
 #### Notes
 
 - The `payer` and `recipient` is required to sign the transaction.
+
+---
+
+#### createVestingEscrowMetadata
+
+Creates a vesting escrow metadata.
+
+#### Function
+
+```typescript
+async createVestingEscrowMetadata(createVestingEscrowMetadataParams: CreateVestingEscrowMetadataParams): Promise<Transaction>
+```
+
+#### Parameters
+
+```typescript
+interface ClaimParams {
+  escrow: PublicKey; // The escrow address
+  name: string; // The name of the vesting escrow
+  description: string; // The description of the vesting escrow
+  creatorEmail: string; // The email of the creator
+  recipientEmail: string; // The email of the recipient
+  creator: PublicKey; // The creator address
+  payer: PublicKey; // The payer address
+}
+```
+
+#### Returns
+
+A transaction that can be signed and sent to the network.
+
+#### Example
+
+```typescript
+const transaction = await client.claimV2({
+  escrow: new PublicKey("escrow1234567890abcdefghijklmnopqrstuvwxyz"),
+  name: "Test Vesting Escrow",
+  description: "This is a test vesting escrow",
+  creatorEmail: "test@test.com",
+  recipientEmail: "test@test.com",
+  creator: new PublicKey("creator1234567890abcdefghijklmnopqrstuvwxyz"),
+  payer: new PublicKey("payer1234567890abcdefghijklmnopqrstuvwxyz"),
+});
+```
+
+#### Notes
+
+- The `payer` and `creator` is required to sign the transaction.
 
 ---
 
