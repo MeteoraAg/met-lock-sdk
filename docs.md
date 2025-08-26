@@ -20,19 +20,19 @@
 
 ---
 
-### Core Functions
+## Core Functions
 
-#### createVestingEscrowV2
+### createVestingEscrowV2
 
 Creates a vesting escrow. This function is a v2 function of `createVestingEscrow`.
 
-#### Function
+**Function**
 
 ```typescript
 async createVestingEscrowV2(createVestingEscrowV2Params: CreateVestingEscrowParams): Promise<Transaction>
 ```
 
-#### Parameters
+**Parameters**
 
 ```typescript
 interface CreateVestingEscrowParams {
@@ -54,11 +54,11 @@ interface CreateVestingEscrowParams {
 }
 ```
 
-#### Returns
+**Returns**
 
 A transaction that can be signed and sent to the network.
 
-#### Example
+**Example**
 
 ```typescript
 const base = Keypair.generate();
@@ -84,7 +84,7 @@ const transaction = await client.createVestingEscrowV2({
 });
 ```
 
-#### Notes
+**Notes**
 
 - The `payer` and `feeVault` is required to sign the transaction.
 - `UserShare` is an array of objects with `address` and `share`.
@@ -93,17 +93,17 @@ const transaction = await client.createVestingEscrowV2({
 
 ---
 
-#### claimV2
+### claimV2
 
 Claims the maximum amount from the vesting escrow.
 
-#### Function
+**Function**
 
 ```typescript
 async claimV2(claimV2Params: ClaimParams): Promise<Transaction>
 ```
 
-#### Parameters
+**Parameters**
 
 ```typescript
 interface ClaimParams {
@@ -114,11 +114,11 @@ interface ClaimParams {
 }
 ```
 
-#### Returns
+**Returns**
 
 A transaction that can be signed and sent to the network.
 
-#### Example
+**Example**
 
 ```typescript
 const transaction = await client.claimV2({
@@ -129,23 +129,23 @@ const transaction = await client.claimV2({
 });
 ```
 
-#### Notes
+**Notes**
 
 - The `payer` and `recipient` is required to sign the transaction.
 
 ---
 
-#### createVestingEscrowMetadata
+### createVestingEscrowMetadata
 
 Creates a vesting escrow metadata.
 
-#### Function
+**Function**
 
 ```typescript
 async createVestingEscrowMetadata(createVestingEscrowMetadataParams: CreateVestingEscrowMetadataParams): Promise<Transaction>
 ```
 
-#### Parameters
+**Parameters**
 
 ```typescript
 interface ClaimParams {
@@ -159,11 +159,11 @@ interface ClaimParams {
 }
 ```
 
-#### Returns
+**Returns**
 
 A transaction that can be signed and sent to the network.
 
-#### Example
+**Example**
 
 ```typescript
 const transaction = await client.claimV2({
@@ -177,35 +177,35 @@ const transaction = await client.claimV2({
 });
 ```
 
-#### Notes
+**Notes**
 
 - The `payer` and `creator` is required to sign the transaction.
 
 ---
 
-### State Functions
+## State Functions
 
-#### getRootEscrow
+### getRootEscrow
 
 Gets the root escrow.
 
-#### Function
+**Function**
 
 ```typescript
 async getRootEscrow(rootEscrow: PublicKey): Promise<RootEscrow>
 ```
 
-#### Parameters
+**Parameters**
 
 ```typescript
 rootEscrow: PublicKey;
 ```
 
-#### Returns
+**Returns**
 
 A root escrow.
 
-#### Example
+**Example**
 
 ```typescript
 const rootEscrow = await client.getRootEscrow(
@@ -213,13 +213,13 @@ const rootEscrow = await client.getRootEscrow(
 );
 ```
 
-#### Notes
+**Notes**
 
 - Returns a `RootEscrow` object.
 
 ---
 
-#### getEscrow
+### getEscrow
 
 Gets the vesting escrow.
 
@@ -227,17 +227,17 @@ Gets the vesting escrow.
 async getEscrow(escrow: PublicKey): Promise<Escrow>
 ```
 
-#### Parameters
+**Parameters**
 
 ```typescript
 escrow: PublicKey;
 ```
 
-#### Returns
+**Returns**
 
 A vesting escrow.
 
-#### Example
+**Example**
 
 ```typescript
 const escrow = await client.getEscrow(
@@ -245,35 +245,35 @@ const escrow = await client.getEscrow(
 );
 ```
 
-#### Notes
+**Notes**
 
 - Returns a `Escrow` object.
 
 ---
 
-### Helper Functions
+## Helper Functions
 
-#### deriveEscrow
+### deriveEscrow
 
 Derives the escrow address.
 
-#### Function
+**Function**
 
 ```typescript
 async deriveEscrow(base: PublicKey): Promise<PublicKey>
 ```
 
-#### Parameters
+**Parameters**
 
 ```typescript
 base: PublicKey;
 ```
 
-#### Returns
+**Returns**
 
 A escrow address.
 
-#### Example
+**Example**
 
 ```typescript
 const escrow = await client.deriveEscrow(
@@ -281,33 +281,33 @@ const escrow = await client.deriveEscrow(
 );
 ```
 
-#### Notes
+**Notes**
 
 - Returns an `Escrow` PDA.
 
 ---
 
-#### deriveEscrowMetadata
+### deriveEscrowMetadata
 
 Derives the escrow metadata address.
 
-#### Function
+**Function**
 
 ```typescript
 async deriveEscrowMetadata(escrow: PublicKey): Promise<PublicKey>
 ```
 
-#### Parameters
+**Parameters**
 
 ```typescript
 escrow: PublicKey;
 ```
 
-#### Returns
+**Returns**
 
 A escrow metadata address.
 
-#### Example
+**Example**
 
 ```typescript
 const escrowMetadata = await client.deriveEscrowMetadata(
@@ -315,6 +315,6 @@ const escrowMetadata = await client.deriveEscrowMetadata(
 );
 ```
 
-#### Notes
+**Notes**
 
 - Returns an `EscrowMetadata` PDA.
